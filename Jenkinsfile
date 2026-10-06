@@ -16,7 +16,16 @@ pipeline {
 
         stage('Checkout') {
             steps {
+                echo "========================================"
+                echo "CHECKOUT"
+                echo "========================================"
+
                 checkout scm
+
+                bat '''
+                    echo Repository files:
+                    dir
+                '''
             }
         }
 
@@ -26,10 +35,10 @@ pipeline {
                 echo "BUILD"
                 echo "========================================"
 
-                bat "mvn clean package -DskipTests"
+                bat 'mvn clean package -DskipTests'
 
-                echo "Generated artifact:"
-                bat "dir target\\*.jar"
+                echo "Generated JAR:"
+                bat 'dir target\\*.jar'
             }
         }
 
@@ -39,7 +48,7 @@ pipeline {
                 echo "TEST"
                 echo "========================================"
 
-                bat "mvn test"
+                bat 'mvn test'
             }
 
             post {
@@ -66,16 +75,10 @@ pipeline {
             }
 
             steps {
-                script {
-
-                    def approval = input(
-                        message: 'Deploy payment application to PRODUCTION?',
-                        ok: 'Deploy',
-                        submitter: 'deployment-approvers'
-                    )
-
-                    echo "Production deployment approved by: ${approval}"
-                }
+                input(
+                    message: 'Deploy payment application to PRODUCTION?',
+                    ok: 'Deploy'
+                )
             }
         }
 
@@ -89,22 +92,17 @@ pipeline {
                 echo "DEPLOY"
                 echo "========================================"
 
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'payment-deploy-credentials',
-                        usernameVariable: 'DEPLOY_USERNAME',
-                        passwordVariable: 'DEPLOY_PASSWORD'
+                bat '''
+                    echo Deploying exact artifact:
+                    echo %WORKSPACE%\\target\\payment-2.7.jar
+
+                    if not exist "target\\payment-2.7.jar" (
+                        echo ERROR: JAR file not found!
+                        exit /b 1
                     )
-                ]) {
 
-                    bat '''
-                        echo Deploying artifact:
-
-                        echo %ARTIFACT%
-
-                        deploy.bat
-                    '''
-                }
+                    call deploy.bat
+                '''
             }
         }
     }
@@ -144,5 +142,17 @@ pipeline {
 
             echo "Production deployment was rejected or aborted."
         }
+
+        cleanup {
+            echo "========================================"
+            echo "CLEANUP"
+            echo "========================================"
+
+            bat '''
+                echo Cleaning workspace...
+                if exist target rmdir /S /Q target
+            '''
+        }
     }
 }
+
