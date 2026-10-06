@@ -1,15 +1,9 @@
 pipeline {
-
     agent any
 
     options {
         timestamps()
         skipDefaultCheckout(true)
-    }
-
-    environment {
-        ARTIFACT = "target/payment-2.7.jar"
-        DEPLOY_USER = credentials('payment-deploy-user')
     }
 
     stages {
@@ -22,10 +16,7 @@ pipeline {
 
                 checkout scm
 
-                bat '''
-                    echo Repository files:
-                    dir
-                '''
+                bat 'dir'
             }
         }
 
@@ -37,7 +28,6 @@ pipeline {
 
                 bat 'mvn clean package -DskipTests'
 
-                echo "Generated JAR:"
                 bat 'dir target\\*.jar'
             }
         }
@@ -92,38 +82,17 @@ pipeline {
                 echo "DEPLOY"
                 echo "========================================"
 
-                bat '''
-                    echo Deploying exact artifact:
-                    echo %WORKSPACE%\\target\\payment-2.7.jar
-
-                    if not exist "target\\payment-2.7.jar" (
-                        echo ERROR: JAR file not found!
-                        exit /b 1
-                    )
-
-                    call deploy.bat
-                '''
+                bat 'call deploy.bat'
             }
         }
     }
 
     post {
 
-        always {
-            echo "========================================"
-            echo "PIPELINE FINISHED"
-            echo "========================================"
-
-            echo "Cleaning workspace..."
-
-            deleteDir()
-        }
-
         success {
             echo "========================================"
             echo "SUCCESS"
             echo "========================================"
-
             echo "Payment application deployed successfully."
         }
 
@@ -131,7 +100,6 @@ pipeline {
             echo "========================================"
             echo "FAILURE"
             echo "========================================"
-
             echo "Build, test or deployment failed."
         }
 
@@ -139,19 +107,7 @@ pipeline {
             echo "========================================"
             echo "ABORTED"
             echo "========================================"
-
             echo "Production deployment was rejected or aborted."
-        }
-
-        cleanup {
-            echo "========================================"
-            echo "CLEANUP"
-            echo "========================================"
-
-            bat '''
-                echo Cleaning workspace...
-                if exist target rmdir /S /Q target
-            '''
         }
     }
 }
